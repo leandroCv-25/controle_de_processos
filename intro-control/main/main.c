@@ -28,25 +28,27 @@ void app_main(void)
             ESP_LOGI(TAG, "Setando velocidade %d e Sentido horario", i);
             set_motor_direction(&motor_ctrl_ctx, MOTOR_FORWARD);
             set_motor_speed(&motor_ctrl_ctx, i);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(1500));  
             ESP_LOGI(TAG, "Velocidade %.2f RPM", get_motor_speed(&motor_ctrl_ctx));
+            print_pulses(&motor_ctrl_ctx);
         }
 
         ESP_LOGI(TAG, "FREIANDO");
         motor_brake(&motor_ctrl_ctx);
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1000));
 
         for (int i=0; i < 150; i++)
         {
             ESP_LOGI(TAG, "Setando velocidade %d e Sentido anti-horario", i);
             set_motor_direction(&motor_ctrl_ctx, MOTOR_REVERSE);
             set_motor_speed(&motor_ctrl_ctx, i);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(1500));
             ESP_LOGI(TAG, "Velocidade %.2f RPM", get_motor_speed(&motor_ctrl_ctx));
+             print_pulses(&motor_ctrl_ctx);
         }
     
         ESP_LOGI(TAG, "FREIANDO");
         motor_brake(&motor_ctrl_ctx);
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

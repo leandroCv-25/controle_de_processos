@@ -8,7 +8,7 @@
 #define BDC_MCPWM_TIMER_RESOLUTION_HZ 10000000                                      // 10MHz, 1 tick = 0.1us
 #define BDC_MCPWM_FREQ_HZ 25000                                                     // 25KHz PWM
 #define BDC_MCPWM_DUTY_TICK_MAX (BDC_MCPWM_TIMER_RESOLUTION_HZ / BDC_MCPWM_FREQ_HZ) // maximum value we can set for the duty cycle, in ticks
-#define BDC_PID_LOOP_PERIOD_MS 10                                                   // calculate the motor speed every 10ms
+#define BDC_PID_LOOP_PERIOD_MS 1                                                  // calculate the motor speed every 10ms
 #define BDC_ENCODER_PCNT_HIGH_LIMIT 1000
 #define BDC_ENCODER_PCNT_LOW_LIMIT -1000
 
@@ -46,6 +46,13 @@ typedef struct
  * @param kp 
  */
 void motor_pid_update(motor_control_context_t *motor_ctrl_ctx, float kp, float kd, float ki);
+
+/**
+ * @brief Test Pulses
+ * 
+ * @param ctx 
+ */
+void print_pulses(motor_control_context_t* ctx);
 
 /**
  * @brief Seta a velocidade esperada do motor

@@ -51,6 +51,25 @@ static void pid_loop_cb(void *args)
     bdc_motor_set_speed(motor, (uint32_t)new_speed);
 }
 
+void print_pulses(motor_control_context_t *ctx)
+{
+    ESP_LOGI(TAG, "pulses Real %d", ctx->report_pulses);
+    ESP_LOGI(TAG, "pulses Expected %d", ctx->expect_speed);
+    set_motor_direction_t direction = ctx->direction;
+
+    float error = 0;
+    // calculate the speed error
+    if (direction == MOTOR_FORWARD)
+    {
+        error = ctx->expect_speed - ctx->report_pulses;
+    }
+    else
+    {
+        error = ctx->expect_speed + ctx->report_pulses;
+    }
+    ESP_LOGI(TAG, "Error %.02f", error);
+}
+
 void motor_pid_update(motor_control_context_t *motor_ctrl_ctx, float kp, float kd, float ki)
 {
     pid_ctrl_parameter_t pid_update_param = {
@@ -69,12 +88,12 @@ void motor_pid_update(motor_control_context_t *motor_ctrl_ctx, float kp, float k
 
 void set_motor_speed(motor_control_context_t *motor_ctrl_ctx, int new_speed)
 {
-    motor_ctrl_ctx->expect_speed = (int)(new_speed*(motor_ctrl_ctx->pulses_per_rotation)/6000);
+    motor_ctrl_ctx->expect_speed = (int)(new_speed * (motor_ctrl_ctx->pulses_per_rotation) / (60000/BDC_PID_LOOP_PERIOD_MS));
 }
 
 float get_motor_speed(motor_control_context_t *motor_ctrl_ctx)
 {
-   return (motor_ctrl_ctx->report_pulses)*6000/(motor_ctrl_ctx->pulses_per_rotation);
+    return (motor_ctrl_ctx->report_pulses) * (60000/BDC_PID_LOOP_PERIOD_MS) / (motor_ctrl_ctx->pulses_per_rotation);
 }
 
 void set_motor_direction(motor_control_context_t *motor_ctrl_ctx, set_motor_direction_t direction)
