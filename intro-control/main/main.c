@@ -16,16 +16,16 @@ void app_main(void)
 {
     static servo_motor_control_context_t motor_ctrl_ctx = {
         .pcnt_encoder = NULL,
-        .pulses_per_rotation = 1630,
+        .pulses_per_rotation = 1632,
         .controlData = // Criando os dados de controle para que sejam mostrados
         {
-            .kp = 0.06,
-            .ki = 0.04,
-            .kd = 0.02,
+            .kp = 0.3,
+            .ki = 0.2,
+            .kd = 0.1,
             .error = 0,
             .output_control = 0,
         },
-        .size_gear = 18,
+        .size_gear = 13,
     };
 
 
@@ -46,14 +46,13 @@ void app_main(void)
         ESP_LOGI(TAG, "Position %.2f mm", get_servo_motor_position(&motor_ctrl_ctx));
         ESP_LOGI(TAG, "ERROR %.3f mm", get_servo_motor_error(&motor_ctrl_ctx));
         ESP_LOGI(TAG, "OUTPUT %.3f", get_servo_motor_control_output(&motor_ctrl_ctx));
-        for (int i = 0; i < 150; i++)
-        {
+        
             vTaskDelay(pdMS_TO_TICKS(2000));
             ESP_LOGI(TAG, "Position %.2f mm", get_servo_motor_position(&motor_ctrl_ctx));
             ESP_LOGI(TAG, "Velocidade %.2f RPM", get_servo_motor_speed(&motor_ctrl_ctx));
             ESP_LOGI(TAG, "ERROR %f mm", get_servo_motor_error(&motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_servo_motor_control_output(&motor_ctrl_ctx));
-        }
+        
 
         for (int i = 150; i > 0; i--)
         {

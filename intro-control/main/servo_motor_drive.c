@@ -85,13 +85,13 @@ void servo_motor_pid_update(servo_motor_control_context_t *motor_ctrl_ctx, float
 
 void set_servo_motor_position(servo_motor_control_context_t *motor_ctrl_ctx, float new_position)
 {
-    motor_ctrl_ctx->expect_position = (int)(motor_ctrl_ctx->pulses_per_rotation * new_position / (M_PI * 2 * (motor_ctrl_ctx->size_gear)));
+    motor_ctrl_ctx->expect_position = (int)(motor_ctrl_ctx->pulses_per_rotation * new_position / (M_PI *  (motor_ctrl_ctx->size_gear)));
 }
 
 float get_servo_motor_position(servo_motor_control_context_t *motor_ctrl_ctx)
 {
 
-    return ((float)(motor_ctrl_ctx->report_pulses) / (motor_ctrl_ctx->pulses_per_rotation)) * M_PI * 2 * (motor_ctrl_ctx->size_gear);
+    return ((float)(motor_ctrl_ctx->report_pulses) / (motor_ctrl_ctx->pulses_per_rotation)) * M_PI *  (motor_ctrl_ctx->size_gear);
 }
 
 float get_servo_motor_speed(servo_motor_control_context_t *motor_ctrl_ctx)
@@ -101,7 +101,7 @@ float get_servo_motor_speed(servo_motor_control_context_t *motor_ctrl_ctx)
 
 float get_servo_motor_error(servo_motor_control_context_t *motor_ctrl_ctx)
 {
-    return ((float)(motor_ctrl_ctx->controlData.error) / (motor_ctrl_ctx->pulses_per_rotation)) * M_PI * 2 * (motor_ctrl_ctx->size_gear);
+    return ((float)(motor_ctrl_ctx->controlData.error) / (motor_ctrl_ctx->pulses_per_rotation)) * M_PI *  (motor_ctrl_ctx->size_gear);
 }
 
 float get_servo_motor_control_output(servo_motor_control_context_t *motor_ctrl_ctx)
@@ -138,13 +138,13 @@ void motor_drive_config(servo_motor_control_context_t *motor_ctrl_ctx, int bdc_m
 
     // Homing
     ESP_ERROR_CHECK(bdc_motor_forward(motor));
-    bdc_motor_set_speed(motor, 25 * BDC_MCPWM_DUTY_TICK_MAX / 100);
+    bdc_motor_set_speed(motor, 65 * BDC_MCPWM_DUTY_TICK_MAX / 100);
     vTaskDelay(pdMS_TO_TICKS(500));
     while (gpio_get_level(home_sensor))
     {
         ESP_ERROR_CHECK(bdc_motor_reverse(motor));
-        bdc_motor_set_speed(motor, 25 * BDC_MCPWM_DUTY_TICK_MAX / 100);
-        vTaskDelay(pdMS_TO_TICKS(100));
+        bdc_motor_set_speed(motor, 75 * BDC_MCPWM_DUTY_TICK_MAX / 100);
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 
     ESP_LOGI(TAG, "Criando o driver que cuida de decodificar o encoder");
