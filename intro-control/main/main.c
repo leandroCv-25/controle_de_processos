@@ -3,27 +3,64 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "esp_system.h"
 #include "esp_log.h"
+#include <nvs_flash.h>
+#include "mqtt_client.h"
 
+#include "button_app.h"
+#include "wifi_app.h"
+#include "rgb_led.h"
+#include "mqtt_app.h"
 #include "motor_drive.h"
 
-static const char *TAG = "Main - PWM MOTOR BDC";
+static const char *TAG = "MAIN";
+button_handle_t button_connect;
+
+static void request_conection(void *arg, void *usr_data)
+{
+    wifi_app_send_message(WIFI_APP_MSG_USER_REQUESTED_CONNECTION);
+}
+
+void wifi_application_connected_events(void)
+{
+    ESP_LOGI(TAG, "WiFi Application Connected!!");
+
+    char device_name[] = "Position_0001";
+
+    client = mqtt_app_start(&receved_msg, device_name);
+}
+
+static void receved_msg(char *str_data)
+{
+}
 
 void app_main(void)
 {
-    static motor_control_context_t motor_ctrl_ctx = {
-        .pcnt_encoder = NULL,
-        .expect_speed = 0,
-        .pulses_per_rotation = 408,
-        .direction = MOTOR_FORWARD};
 
-    motor_drive_config(&motor_ctrl_ctx, 18, 19, 33, 32, 0);
+    /* Initialize NVS partition */
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        /* NVS partition was truncated
+         * and needs to be erased */
+        ESP_ERROR_CHECK(nvs_flash_erase());
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+        /* Retry nvs_flash_init */
+        ESP_ERROR_CHECK(nvs_flash_init());
+    }
+
+    rgb_led_init();
+
+    wifi_app_start(&wifi_application_connected_events);
+
+    button_connect = button_app_init(13, 0);
+
+    resgister_event_callback(button_connect, BUTTON_LONG_PRESS_START, 8000, &request_conection, NULL);
 
     while (true)
     {
-        for (int i=0; i < 150; i++)
+        for (int i = 0; i < 150; i++)
         {
             ESP_LOGI(TAG, "Setando velocidade %d e Sentido horario", i);
             set_motor_direction(&motor_ctrl_ctx, MOTOR_FORWARD);
@@ -36,7 +73,7 @@ void app_main(void)
         motor_brake(&motor_ctrl_ctx);
         vTaskDelay(pdMS_TO_TICKS(100));
 
-        for (int i=0; i < 150; i++)
+        for (int i = 0; i < 150; i++)
         {
             ESP_LOGI(TAG, "Setando velocidade %d e Sentido anti-horario", i);
             set_motor_direction(&motor_ctrl_ctx, MOTOR_REVERSE);
@@ -44,7 +81,7 @@ void app_main(void)
             vTaskDelay(pdMS_TO_TICKS(100));
             ESP_LOGI(TAG, "Velocidade %.2f RPM", get_motor_speed(&motor_ctrl_ctx));
         }
-    
+
         ESP_LOGI(TAG, "FREIANDO");
         motor_brake(&motor_ctrl_ctx);
         vTaskDelay(pdMS_TO_TICKS(100));
