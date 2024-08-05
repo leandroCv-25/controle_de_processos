@@ -17,6 +17,13 @@
 static const char *TAG = "MAIN";
 button_handle_t button_connect;
 
+float kp;
+float ki;
+float kd;
+float setpoint;
+float vmax;
+int isClosedLoop;
+
 static void request_conection(void *arg, void *usr_data)
 {
     wifi_app_send_message(WIFI_APP_MSG_USER_REQUESTED_CONNECTION);
@@ -33,6 +40,14 @@ void wifi_application_connected_events(void)
 
 static void receved_msg(char *str_data)
 {
+    sscanf(str_data, "{\"kp\":%f,\n\"ki\":%f,\n \"kd\":%f,\n\"setpoint\":%f,\n \"vmax\":%f,\n\"isClosedLoop\":%d}", &kp, &ki, &kd, &setpoint, &vmax, &isClosedLoop);
+}
+
+void send_msg(float position, float error, float output, float speed)
+{
+    char msg[200];
+    sprintf(msg, "{\"position\":%f,\n\"error\":%f,\n \"output\":%f,\n\"speed\":%f}", position, error, output, speed);
+    mqtt_app_send_msg(client, msg);
 }
 
 void app_main(void)

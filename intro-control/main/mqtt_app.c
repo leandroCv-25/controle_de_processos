@@ -19,8 +19,8 @@ static const char *TAG = "mqtt";
 extern const uint8_t mqtt_cert_io_pem_start[] asm("_binary_isrgrootx1_pem_start");
 extern const uint8_t mqtt_cert_io_pem_end[] asm("_binary_isrgrootx1_pem_end");
 
-char control_data[27];
-char current_data[27];
+char control_data[28];
+char current_data[28];
 
 void mqtt_app_recevied_msg(char *str_data);
 
@@ -107,10 +107,10 @@ esp_mqtt_client_handle_t mqtt_app_start(mqtt_recevied_msg_event_callback_t cb, c
 
     mqtt_recevied_msg_event_cb = cb;
 
-    snprintf(control_data, 27, "/%s/controler",
+    snprintf(control_data, 28, "/%s/controler",
              device_name);
 
-    snprintf(current_data, 27, "/%s/data",
+    snprintf(current_data, 28, "/%s/data",
              device_name);
 
     ESP_LOGI(TAG, "Controle %s", control_data);
