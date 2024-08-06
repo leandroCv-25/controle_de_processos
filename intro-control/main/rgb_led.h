@@ -1,9 +1,9 @@
 #ifndef RGB_LED_H_
 #define RGB_LED_H_
 // RGB LED GPIOs
-#define RGB_LED_RED_GPIO 14
-#define RGB_LED_GREEN_GPIO 12
-#define RGB_LED_BLUE_GPIO 13
+#define RGB_LED_RED_GPIO 5
+#define RGB_LED_GREEN_GPIO 4
+#define RGB_LED_BLUE_GPIO 2
 
 // RGB LED Color mix channels
 #define RGB_LED_CHANNEL_NUM 3

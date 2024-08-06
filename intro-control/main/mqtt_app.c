@@ -90,7 +90,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 void mqtt_app_send_msg(esp_mqtt_client_handle_t client, char* msg)
 {
-    int msg_id = esp_mqtt_client_publish(client, current_data, msg, 1, 1, 300);
+    int msg_id = esp_mqtt_client_publish(client, current_data, msg, strlen(msg), 1, 300);
     ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 }
 
@@ -98,7 +98,7 @@ void mqtt_app_recevied_msg(char *str_data)
 {
     if (mqtt_recevied_msg_event_cb)
     {
-        mqtt_recevied_msg_event_cb("Data");
+        mqtt_recevied_msg_event_cb(str_data);
     }
 }
 
@@ -123,8 +123,8 @@ esp_mqtt_client_handle_t mqtt_app_start(mqtt_recevied_msg_event_callback_t cb, c
         .broker.verification.certificate = (const char *)mqtt_cert_io_pem_start,
         // .network.disable_auto_reconnect = true,
         .credentials.client_id = device_name,
-        .credentials.username = "loboCv",
-        .credentials.authentication.password = "123456789",
+        .credentials.username = "esp32",
+        .credentials.authentication.password = "Le123456789",
         .session.keepalive = 60,
         .session.disable_clean_session = false,
         .session.disable_keepalive = false,

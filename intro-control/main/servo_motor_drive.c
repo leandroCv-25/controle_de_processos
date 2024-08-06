@@ -7,103 +7,115 @@
 #include "esp_timer.h"
 
 #include "driver/pulse_cnt.h"
+#include "driver/gpio.h"
+
 #include "bdc_motor.h"
 #include "pid_ctrl.h"
 
-#include "motor_drive.h"
+#include "servo_motor_drive.h"
+
+#define M_PI 3.14159265358979323846
 
 static const char *TAG = "PWM MOTOR BDC";
 
 // Função de CALLBACK do PID
 static void pid_loop_cb(void *args)
 {
-    static int last_pulse_count = 0;
-    motor_control_context_t *ctx = (motor_control_context_t *)args;
+    servo_motor_control_context_t *ctx = (servo_motor_control_context_t *)args;
     pcnt_unit_handle_t pcnt_unit = ctx->pcnt_encoder;
     pid_ctrl_block_handle_t pid_ctrl = ctx->pid_ctrl;
     bdc_motor_handle_t motor = ctx->motor;
-    int expect_speed = ctx->expect_speed;
-    set_motor_direction_t direction = ctx->direction;
 
     // get the result from rotary encoder
     int cur_pulse_count = 0;
     ESP_ERROR_CHECK(pcnt_unit_get_count(pcnt_unit, &cur_pulse_count));
 
-    int real_pulses = 0;
-    real_pulses = cur_pulse_count - last_pulse_count;
-    last_pulse_count = cur_pulse_count;
-    ctx->report_pulses = real_pulses;
+    ctx->delta_pulses = cur_pulse_count - ctx->report_pulses;
+    ctx->report_pulses = cur_pulse_count;
 
-    float error = 0;
+    int error = 0;
     float new_speed = 0;
-    // calculate the speed error
-    if (direction == MOTOR_FORWARD)
+    // calculate the position error
+    error = (ctx->expect_position - ctx->report_pulses);
+
+    ctx->controlData.error = error;
+    if (error > 0)
     {
-        error = expect_speed - real_pulses;
+        ESP_ERROR_CHECK(bdc_motor_forward(motor));
+        // set the new speed
+        pid_compute(pid_ctrl, error, &new_speed);
+        ctx->controlData.output_control = new_speed;
+        bdc_motor_set_speed(motor, (uint32_t)new_speed);
+    }
+    else if (error < 0)
+    {
+        error = abs(error);
+        ESP_ERROR_CHECK(bdc_motor_reverse(motor));
+        // set the new speed
+        pid_compute(pid_ctrl, error, &new_speed);
+        ctx->controlData.output_control = new_speed;
+        bdc_motor_set_speed(motor, (uint32_t)new_speed);
     }
     else
     {
-        error = expect_speed + real_pulses;
+        bdc_motor_brake(motor);
+        ctx->controlData.output_control = 0;
     }
-
-    // set the new speed
-    pid_compute(pid_ctrl, error, &new_speed);
-    bdc_motor_set_speed(motor, (uint32_t)new_speed);
 }
 
-void motor_pid_update(motor_control_context_t *motor_ctrl_ctx, float kp, float kd, float ki)
+void servo_motor_pid_update(servo_motor_control_context_t *motor_ctrl_ctx, float kp, float ki, float kd)
 {
+    motor_ctrl_ctx->controlData.kp = kp;
+    motor_ctrl_ctx->controlData.ki = ki;
+    motor_ctrl_ctx->controlData.kd = kd;
+
+    pid_ctrl_block_handle_t pid_ctrl = motor_ctrl_ctx->pid_ctrl;
+
     pid_ctrl_parameter_t pid_update_param = {
         .kp = kp,
         .ki = ki,
         .kd = kd,
-        .cal_type = PID_CAL_TYPE_INCREMENTAL,
+        .cal_type = PID_CAL_TYPE_POSITIONAL,
         .max_output = BDC_MCPWM_DUTY_TICK_MAX - 1,
         .min_output = 0,
         .max_integral = 1000,
         .min_integral = -1000,
     };
 
-    ESP_ERROR_CHECK(pid_update_parameters(motor_ctrl_ctx->pid_ctrl, &pid_update_param));
+    ESP_ERROR_CHECK(pid_update_parameters(pid_ctrl, &pid_update_param));
 }
 
-void set_motor_speed(motor_control_context_t *motor_ctrl_ctx, int new_speed)
+void set_servo_motor_position(servo_motor_control_context_t *motor_ctrl_ctx, float new_position)
 {
-    motor_ctrl_ctx->expect_speed = (int)(new_speed*(motor_ctrl_ctx->pulses_per_rotation)/6000);
+    motor_ctrl_ctx->expect_position = (int)(motor_ctrl_ctx->pulses_per_rotation * new_position / (M_PI * (motor_ctrl_ctx->size_gear)));
 }
 
-float get_motor_speed(motor_control_context_t *motor_ctrl_ctx)
+float get_servo_motor_position(servo_motor_control_context_t *motor_ctrl_ctx)
 {
-   return (motor_ctrl_ctx->report_pulses)*6000/(motor_ctrl_ctx->pulses_per_rotation);
+
+    return ((float)(motor_ctrl_ctx->report_pulses) / (motor_ctrl_ctx->pulses_per_rotation)) * M_PI * (motor_ctrl_ctx->size_gear);
 }
 
-void set_motor_direction(motor_control_context_t *motor_ctrl_ctx, set_motor_direction_t direction)
+float get_servo_motor_speed(servo_motor_control_context_t *motor_ctrl_ctx)
 {
-
-    if (direction == MOTOR_FORWARD)
-    {
-        motor_ctrl_ctx->direction = MOTOR_FORWARD;
-        bdc_motor_forward(motor_ctrl_ctx->motor);
-    }
-    else if (direction == MOTOR_REVERSE)
-    {
-        motor_ctrl_ctx->direction = MOTOR_REVERSE;
-        bdc_motor_reverse(motor_ctrl_ctx->motor);
-    }
-    else
-    {
-        motor_brake(motor_ctrl_ctx);
-    }
+    return (motor_ctrl_ctx->delta_pulses) * 60000 / ((motor_ctrl_ctx->pulses_per_rotation) * BDC_PID_LOOP_PERIOD_MS);
 }
 
-void motor_brake(motor_control_context_t *motor_ctrl_ctx)
+float get_servo_motor_error(servo_motor_control_context_t *motor_ctrl_ctx)
 {
-    set_motor_speed(motor_ctrl_ctx, 0);
-    bdc_motor_brake(motor_ctrl_ctx->motor);
+    return ((float)(motor_ctrl_ctx->controlData.error) / (motor_ctrl_ctx->pulses_per_rotation)) * M_PI * (motor_ctrl_ctx->size_gear);
 }
 
-void motor_drive_config(motor_control_context_t *motor_ctrl_ctx, int bdc_mcpwm_gpio_a, int bdc_mcpwm_gpio_b, int bdc_encoder_gpio_a, int bdc_encoder_gpio_b, int group_id)
+float get_servo_motor_control_output(servo_motor_control_context_t *motor_ctrl_ctx)
 {
+    return 100 * (motor_ctrl_ctx->controlData.output_control) / BDC_MCPWM_DUTY_TICK_MAX;
+}
+
+void motor_drive_config(servo_motor_control_context_t *motor_ctrl_ctx, int bdc_mcpwm_gpio_a, int bdc_mcpwm_gpio_b, int bdc_encoder_gpio_a, int bdc_encoder_gpio_b, int group_id, int home_sensor)
+{
+
+    // Fazer um HOME depois
+    motor_ctrl_ctx->expect_position = 0;
 
     ESP_LOGI(TAG, "Criando o DC motor");
     bdc_motor_config_t motor_config = {
@@ -122,6 +134,20 @@ void motor_drive_config(motor_control_context_t *motor_ctrl_ctx, int bdc_mcpwm_g
     ESP_ERROR_CHECK(bdc_motor_new_mcpwm_device(&motor_config, &mcpwm_config, &motor));
     // Colocando nossa variável no contexto para podermos manipular o motor fora da função
     motor_ctrl_ctx->motor = motor;
+
+    ESP_LOGI(TAG, "Habilitando o motor");
+    ESP_ERROR_CHECK(bdc_motor_enable(motor));
+
+    // Homing
+    ESP_ERROR_CHECK(bdc_motor_forward(motor));
+    bdc_motor_set_speed(motor, 65 * BDC_MCPWM_DUTY_TICK_MAX / 100);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    while (gpio_get_level(home_sensor))
+    {
+        ESP_ERROR_CHECK(bdc_motor_reverse(motor));
+        bdc_motor_set_speed(motor, 75 * BDC_MCPWM_DUTY_TICK_MAX / 100);
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
 
     ESP_LOGI(TAG, "Criando o driver que cuida de decodificar o encoder");
     pcnt_unit_config_t unit_config = {
@@ -181,10 +207,10 @@ void motor_drive_config(motor_control_context_t *motor_ctrl_ctx, int bdc_mcpwm_g
     ESP_LOGI(TAG, "Criando o bloco de controle PID");
     // Configuração do PID
     pid_ctrl_parameter_t pid_runtime_param = {
-        .kp = 0.6,
-        .ki = 0.4,
-        .kd = 0.2,
-        .cal_type = PID_CAL_TYPE_INCREMENTAL, // Tipo de controle -> para o motor o ideal é incremental mesmo (Pensado na velocidade)
+        .kp = motor_ctrl_ctx->controlData.kp,
+        .ki = motor_ctrl_ctx->controlData.ki,
+        .kd = motor_ctrl_ctx->controlData.kd,
+        .cal_type = PID_CAL_TYPE_POSITIONAL, // Tipo de controle -> para o motor o ideal é incremental mesmo (Pensado na velocidade)
         .max_output = BDC_MCPWM_DUTY_TICK_MAX - 1,
         .min_output = 0,
         .max_integral = 1000,
@@ -209,21 +235,6 @@ void motor_drive_config(motor_control_context_t *motor_ctrl_ctx, int bdc_mcpwm_g
         .name = "pid_loop"};
     esp_timer_handle_t pid_loop_timer = NULL;
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &pid_loop_timer));
-
-    ESP_LOGI(TAG, "Habilitando o motor");
-    ESP_ERROR_CHECK(bdc_motor_enable(motor));
-
-    if (motor_ctrl_ctx->direction == MOTOR_REVERSE)
-    {
-        ESP_LOGI(TAG, "Motor girando sentido anti-horario");
-        ESP_ERROR_CHECK(bdc_motor_reverse(motor));
-    }
-    else
-    {
-        motor_ctrl_ctx->direction = MOTOR_FORWARD;
-        ESP_LOGI(TAG, "Motor girando sentido horario");
-        ESP_ERROR_CHECK(bdc_motor_forward(motor));
-    }
 
     ESP_LOGI(TAG, "Start! o controle vai começar a calcular agora");
     ESP_ERROR_CHECK(esp_timer_start_periodic(pid_loop_timer, BDC_PID_LOOP_PERIOD_MS * 1000));

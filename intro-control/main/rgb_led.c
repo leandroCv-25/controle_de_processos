@@ -153,7 +153,6 @@ static void rgb_app_task(void *pvParameters)
                     rgb_led_set_color(0, 0, 0);
                     vTaskDelay(pdMS_TO_TICKS(1000));
                 }
-                esp_restart();
                 break;
             }
         }
