@@ -13,6 +13,31 @@
 
 static const char *TAG = "Motor Step";
 
+static void stepper_task(void *pvParameters)
+{
+    stepper_motor_control_context_t *motor_ctrl_ctx = (stepper_motor_control_context_t *)pvParameters;
+    while (true)
+    {
+        if (motor_ctrl_ctx->expect_position > motor_ctrl_ctx->report_pulses)
+        {
+            gpio_set_level(motor_ctrl_ctx->diretion_gpio, true);
+            gpio_set_level(motor_ctrl_ctx->step_gpio, true);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            gpio_set_level(motor_ctrl_ctx->step_gpio, false);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            motor_ctrl_ctx->report_pulses++;
+        }
+        else if (motor_ctrl_ctx->expect_position < motor_ctrl_ctx->report_pulses)
+        {
+            gpio_set_level(motor_ctrl_ctx->step_gpio, true);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            gpio_set_level(motor_ctrl_ctx->step_gpio, false);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            motor_ctrl_ctx->report_pulses--;
+        }
+    }
+}
+
 void set_step_motor_position(stepper_motor_control_context_t *motor_ctrl_ctx, float new_position)
 {
     motor_ctrl_ctx->expect_position = (int)(motor_ctrl_ctx->pulses_per_rotation * new_position / (M_PI * (motor_ctrl_ctx->size_gear)));
@@ -42,7 +67,6 @@ float get_step_motor_position(stepper_motor_control_context_t *motor_ctrl_ctx)
 void stepper_motor_drive_config(stepper_motor_control_context_t *motor_ctrl_ctx, int home_sensor)
 {
 
-   
     motor_ctrl_ctx->expect_position = 0;
 
     ESP_LOGI(TAG, "Criando o STEP motor");
@@ -71,4 +95,6 @@ void stepper_motor_drive_config(stepper_motor_control_context_t *motor_ctrl_ctx,
 
     motor_ctrl_ctx->expect_position = 0;
     motor_ctrl_ctx->report_pulses = 0;
+
+    xTaskCreate(&stepper_task, "stepper_task", 8094, motor_ctrl_ctx, 1, NULL);
 }
