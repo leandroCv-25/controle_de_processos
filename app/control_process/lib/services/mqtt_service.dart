@@ -28,23 +28,19 @@ class MqttService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String data = "";
+  final List<Map<String, String>> data = [];
   bool get hasData => data.isNotEmpty;
-
-  String _topic = "";
-  bool get hasTopic => _topic.isNotEmpty;
-  set topic(String topic) {
-    _topic = topic;
-    if (connectionStatus == MqttServiceStatusConnetion.connected) {
-      subscribe();
-    }
+  void clearData(value) {
+    data.remove(value);
   }
+
+  final List<String> _topics = [];
 
   MqttService();
 
   Future<void> mqttConnect(String clientId) async {
     client = MqttServerClient.withPort(
-      '',
+      '4138b3edeec543a6853636401d12dfdf.s2.eu.hivemq.cloud',
       clientId,
       8883,
     );
@@ -52,10 +48,9 @@ class MqttService extends ChangeNotifier {
     client.autoReconnect = true;
 
     final SecurityContext context = SecurityContext.defaultContext;
-    const key ="";
-       
-    context.usePrivateKeyBytes(key.codeUnits);
+    final ca = await rootBundle.load("assets/certs/isrgrootx1.pem");
 
+    context.setTrustedCertificatesBytes(ca.buffer.asUint8List());
     client.secure = true;
     client.securityContext = context;
 
@@ -86,7 +81,7 @@ class MqttService extends ChangeNotifier {
     client.pongCallback = _pong;
 
     final connMess = MqttConnectMessage()
-        .authenticateAs("loboCv", "123456789")
+        .authenticateAs("esp32", "Le123456789")
         .withWillTopic(clientId) // If you set this you must set a will message
         .withWillMessage('Disconnected')
         .startClean() // Non persistent session for testing
@@ -94,7 +89,7 @@ class MqttService extends ChangeNotifier {
     client.connectionMessage = connMess;
 
     try {
-      await client.connect("loboCv", "123456789");
+      await client.connect("esp32", "Le123456789");
     } on NoConnectionException catch (e) {
       // Raised by the client when connection fails.
       error = "Opa! Tivemos algum problema.";
@@ -120,21 +115,26 @@ class MqttService extends ChangeNotifier {
     }
   }
 
-  void subscribe() {
+  void subscribe(String topic) {
     /// The client has a change notifier object(see the Observable class) which we then listen to to get
     /// notifications of published updates to each subscribed topic.
     /// In general you should listen here as soon as possible after connecting, you will not receive any
     /// publish messages until you do this.
     /// Also you must re-listen after disconnecting.
-    client.subscribe(_topic, MqttQos.atMostOnce);
+    if (!_topics.contains(topic)) {
+      _topics.add(topic);
+    }
+    client.subscribe(topic, MqttQos.exactlyOnce);
     client.updates!.listen(_onData);
   }
 
   /// The subscribed callback
   void _onData(List<MqttReceivedMessage<MqttMessage?>>? c) {
     final recMess = c![0].payload as MqttPublishMessage;
-    final pt =
+    final payload =
         MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+
+    final topic = recMess.payload.variableHeader?.topicName;
 
     /// The above may seem a little convoluted for users only interested in the
     /// payload, some users however may be interested in the received publish message,
@@ -144,18 +144,22 @@ class MqttService extends ChangeNotifier {
     // debugPrint(
     //     'EXAMPLE::Change notification:: topic is <${c[0].topic}>, payload is <-- $pt -->');
     // debugPrint('');
-
-    data = pt;
+    Map<String, String> msg = {};
+    if (topic != null) {
+      msg["topic"] = topic;
+    }
+    msg["data"] = payload;
+    data.add(msg);
 
     notifyListeners();
   }
 
-  void published(String msg) {
+  void published(String topic, String msg) {
     /// Use the payload builder rather than a raw buffer
     /// Our known topic to publish to
     final builder = MqttClientPayloadBuilder();
     builder.addString(msg);
-    client.publishMessage(_topic, MqttQos.exactlyOnce, builder.payload!);
+    client.publishMessage(topic, MqttQos.exactlyOnce, builder.payload!);
   }
 
   /// The subscribed callback
@@ -174,10 +178,12 @@ class MqttService extends ChangeNotifier {
 
   /// The successful connect callback
   void _onConnected() {
-    connectionStatus = MqttServiceStatusConnetion.connected;
-    if (hasTopic) {
-      subscribe();
+    if (_topics.isNotEmpty) {
+      for (String topic in _topics) {
+        subscribe(topic);
+      }
     }
+    connectionStatus = MqttServiceStatusConnetion.connected;
   }
 
   /// Pong callback

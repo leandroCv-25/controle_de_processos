@@ -71,6 +71,8 @@ void servo_motor_pid_update(servo_motor_control_context_t *motor_ctrl_ctx, float
 
     pid_ctrl_block_handle_t pid_ctrl = motor_ctrl_ctx->pid_ctrl;
 
+    ESP_LOGI(TAG,"{\"kp\":%f,\"ki\":%f,\"kd\":%f}", kp, ki, kd);
+
     pid_ctrl_parameter_t pid_update_param = {
         .kp = kp,
         .ki = ki,

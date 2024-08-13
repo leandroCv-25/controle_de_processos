@@ -1,10 +1,11 @@
-import 'package:control_process/widgets/settings_control_position.dart';
+import 'package:control_process/widgets/settings_control_position_widget.dart';
+import 'package:control_process/widgets/state_position_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../controller/connect_controller.dart';
+import '../controller/device_controller.dart';
 import '../model/device.dart';
-import '../provider/connection_provider.dart';
+import '../services/mqtt_service.dart';
 
 class DeviceControlScreen extends StatelessWidget {
   const DeviceControlScreen({super.key, required this.device});
@@ -13,16 +14,16 @@ class DeviceControlScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProxyProvider<ConnectionProvider, ConnectController>(
+    return ChangeNotifierProxyProvider<MqttService, DeviceController>(
       create: (context) {
-        return ConnectController();
+        return DeviceController(device: device);
       },
-      update: (BuildContext context, ConnectionProvider connectionProvider,
-          ConnectController? connectController) {
-        if (connectController != null) {
-          return connectController..update(connectionProvider);
+      update: (BuildContext context, MqttService mqttService,
+          DeviceController? deviceController) {
+        if (deviceController != null) {
+          return deviceController..update(mqttService);
         } else {
-          return ConnectController()..update(connectionProvider);
+          return DeviceController(device: device)..update(mqttService);
         }
       },
       builder: (context, _) {
@@ -40,14 +41,12 @@ class DeviceControlScreen extends StatelessWidget {
                   margin: const EdgeInsets.all(16),
                   child: Padding(
                     padding: const EdgeInsets.all(8),
-                    child: Consumer<ConnectController>(
-                      builder: (context, connectController, header) {
-                        if (connectController.error != null ||
-                            connectController.connectionName == null) {
+                    child: Consumer<DeviceController>(
+                      builder: (context, deviceController, _) {
+                        if (deviceController.isThereError) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              header!,
                               const Icon(Icons.error),
                               RichText(
                                 textAlign: TextAlign.center,
@@ -56,7 +55,7 @@ class DeviceControlScreen extends StatelessWidget {
                                   style: Theme.of(context).textTheme.bodyLarge,
                                   children: [
                                     TextSpan(
-                                      text: connectController.error,
+                                      text: deviceController.error,
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium,
@@ -70,15 +69,29 @@ class DeviceControlScreen extends StatelessWidget {
                         return SingleChildScrollView(
                           child: Column(
                             children: [
-                              SettingsControlPosition(
-                                kp: 0.5,
-                                ki: 0.5,
-                                kd: 50,
-                                onChangedKp: (value) {},
-                                onChangedKi: (value) {},
-                                onChangedKd: (value) {},
-                                isClosedLoop: false,
-                                onChangedIsClosedLoop: (bool) {},
+                              SettingsControlPositionWidget(
+                                kp: deviceController.kp,
+                                ki: deviceController.ki,
+                                kd: deviceController.kd,
+                                setPoint: deviceController.setpoint,
+                                vmax: deviceController.vmax,
+                                isClosedLoop: deviceController.isClosedLoop,
+                                onChangedKp: (value) =>
+                                    deviceController.kp = value,
+                                onChangedKi: (value) =>
+                                    deviceController.ki = value,
+                                onChangedKd: (value) =>
+                                    deviceController.kd = value,
+                                onChangedSetPoint: (value) =>
+                                    deviceController.setpoint = value,
+                                onChangedVMax: (value) =>
+                                    deviceController.vmax = value,
+                                onChangedIsClosedLoop: (value) =>
+                                    deviceController.isClosedLoop = value,
+                                sendMensage: deviceController.sendMensage,
+                              ),
+                              StatePositionWidget(
+                                states: deviceController.states,
                               ),
                             ],
                           ),

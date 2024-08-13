@@ -90,7 +90,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 void mqtt_app_send_msg(esp_mqtt_client_handle_t client, char* msg)
 {
-    int msg_id = esp_mqtt_client_publish(client, current_data, msg, strlen(msg), 1, 300);
+    int msg_id = esp_mqtt_client_publish(client, current_data, msg, strlen(msg), 2, 300);
     ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 }
 
@@ -107,7 +107,7 @@ esp_mqtt_client_handle_t mqtt_app_start(mqtt_recevied_msg_event_callback_t cb, c
 
     mqtt_recevied_msg_event_cb = cb;
 
-    snprintf(control_data, 28, "/%s/controler",
+    snprintf(control_data, 28, "/%s/controller",
              device_name);
 
     snprintf(current_data, 28, "/%s/data",

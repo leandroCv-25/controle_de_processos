@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'device_state.dart';
 
 class Device {
@@ -14,13 +16,26 @@ class Device {
 
   Device({
     required id,
-    this.kp = 0,
-    this.ki = 0,
-    this.kd = 0,
-    this.setPoint = 0,
+    this.kp = 0.4,
+    this.ki = 0.2,
+    this.kd = 0.1,
+    this.setPoint = 100,
     this.vmax = 100,
-    this.isClosedLoop = 0,
+    this.isClosedLoop = 1,
   }) : _id = id;
 
   String get id => _id;
+
+  String toJson() {
+    final Map<String, dynamic> map = {
+      "kp": double.parse(kp.toStringAsFixed(3)),
+      "ki": double.parse(ki.toStringAsFixed(3)),
+      "kd": double.parse(kd.toStringAsFixed(3)),
+      "setpoint": setPoint,
+      "vmax": vmax,
+      "isClosedLoop": isClosedLoop,
+    };
+
+    return json.encode(map);
+  }
 }

@@ -13,7 +13,7 @@ class DevicesProvider extends ChangeNotifier {
   final List<Device> listDevices = [];
   late final String profile;
 
-  MqttService? _mqttProvider;
+  MqttService? _mqttService;
 
   bool _loading = false;
   bool get loading => _loading;
@@ -34,20 +34,16 @@ class DevicesProvider extends ChangeNotifier {
     setProfile();
   }
 
-  update(MqttService? mqttProvider, PermissionProvider? permissions) {
-    _mqttProvider = mqttProvider;
+  update(MqttService? mqttService, PermissionProvider? permissions) async {
+    _mqttService = mqttService;
 
-    if (_mqttProvider != null && _mqttProvider!.hasError) {
-      error = _mqttProvider!.error;
+    if (_mqttService != null && _mqttService!.hasError) {
+      error = _mqttService!.error;
     }
 
     if (permissions != null && Platform.isIOS && !permissions.notification) {
       error = "Os Soulmates não funcionam como deveriam sem a notificação";
     }
-
-    if (_mqttProvider != null &&
-        _mqttProvider!.hasData &&
-        !_mqttProvider!.hasError) {}
   }
 
   Future<void> setProfile() async {
@@ -85,6 +81,10 @@ class DevicesProvider extends ChangeNotifier {
     }
 
     profile = id;
+
+    if (_mqttService != null) {
+      await _mqttService!.mqttConnect(profile);
+    }
 
     final List<String>? list = prefs.getStringList('idDevice');
 

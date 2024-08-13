@@ -34,10 +34,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProxyProvider2<MqttService, PermissionProvider,
             DevicesProvider>(
           create: (context) => DevicesProvider(),
-          update:
-              (context, mqttProvider, permissionProvider, soulmateProvider) {
-            if (soulmateProvider != null) {
-              return soulmateProvider..update(mqttProvider, permissionProvider);
+          update: (context, mqttProvider, permissionProvider, devicesProvider) {
+            if (devicesProvider != null) {
+              return devicesProvider..update(mqttProvider, permissionProvider);
             } else {
               return DevicesProvider()
                 ..update(mqttProvider, permissionProvider);
@@ -244,6 +243,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
+          sliderTheme: const SliderThemeData(),
         ),
         home: const MenuScreen(),
       ),
