@@ -14,6 +14,7 @@
 #include "mqtt_app.h"
 #include "driver/gpio.h"
 
+#include "stepper_motor_drive.h"
 #include "servo_motor_drive.h"
 
 static const char *TAG = "MAIN";
@@ -100,6 +101,7 @@ void app_main(void)
 
     gpio_num_t homeSensor = 34;
     esp_rom_gpio_pad_select_gpio(homeSensor);
+    gpio_set_direction(homeSensor, GPIO_MODE_INPUT);
     gpio_set_direction(homeSensor, GPIO_MODE_INPUT);
 
     motor_drive_config(&servo_motor_ctrl_ctx, 22, 23, 33, 32, 0, homeSensor);
