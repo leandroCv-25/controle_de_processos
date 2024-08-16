@@ -20,6 +20,7 @@
 static const char *TAG = "MAIN";
 button_handle_t button_connect;
 servo_motor_control_context_t servo_motor_ctrl_ctx;
+stepper_motor_control_context_t stepper_motor_ctrl_ctx;
 
 float kp = 0.3;
 float ki = 0.2;
@@ -38,15 +39,19 @@ static void request_conection(void *arg, void *usr_data)
 
 static void receved_msg(char *str_data)
 {
-    ESP_LOGI(TAG,"%s",str_data);
+    ESP_LOGI(TAG, "%s", str_data);
     sscanf(str_data, "{\"kp\":%f,\"ki\":%f,\"kd\":%f,\"setpoint\":%f,\"vmax\":%f,\"isClosedLoop\":%d}", &kp, &ki, &kd, &setpoint, &vmax, &isClosedLoop);
-    ESP_LOGI(TAG,"{\"kp\":%f,\"ki\":%f,\"kd\":%f,\"setpoint\":%f,\"vmax\":%f,\"isClosedLoop\":%d}", kp, ki, kd, setpoint, vmax, isClosedLoop);
+    ESP_LOGI(TAG, "{\"kp\":%f,\"ki\":%f,\"kd\":%f,\"setpoint\":%f,\"vmax\":%f,\"isClosedLoop\":%d}", kp, ki, kd, setpoint, vmax, isClosedLoop);
 
     if (isClosedLoop)
     {
-        servo_motor_pid_update(&servo_motor_ctrl_ctx, kp, kd, ki);
+        servo_motor_pid_update(&servo_motor_ctrl_ctx, kp, kd, ki, vmax);
         set_servo_motor_position(&servo_motor_ctrl_ctx, setpoint);
         // set_vmax_servo_motor(&servo_motor_ctrl_ctx, vmax);
+    }
+    else
+    {
+        set_stepper_motor_position(&stepper_motor_ctrl_ctx, setpoint, vmax);
     }
 }
 
@@ -98,18 +103,31 @@ void app_main(void)
     servo_motor_ctrl_ctx.controlData.error = 0;
     servo_motor_ctrl_ctx.controlData.output_control = 0;
     servo_motor_ctrl_ctx.size_gear = 13;
+    servo_motor_ctrl_ctx.home_sensor = 34;
+    servo_motor_ctrl_ctx.bdc_mcpwm_gpio_a = 22;
+    servo_motor_ctrl_ctx.bdc_mcpwm_gpio_b = 23;
+    servo_motor_ctrl_ctx.bdc_encoder_gpio_a = 33;
+    servo_motor_ctrl_ctx.bdc_encoder_gpio_b = 32;
+    servo_motor_ctrl_ctx.group_id_timer = 0;
+
+    stepper_motor_ctrl_ctx.vmax = vmax;
+    stepper_motor_ctrl_ctx.size_gear = 13;
+    stepper_motor_ctrl_ctx.step_gpio = 18;
+    stepper_motor_ctrl_ctx.diretion_gpio = 19;
+    stepper_motor_ctrl_ctx.home_sensor = 34;
+    stepper_motor_ctrl_ctx.pulses_per_rotation = 3200;
 
     gpio_num_t homeSensor = 34;
     esp_rom_gpio_pad_select_gpio(homeSensor);
     gpio_set_direction(homeSensor, GPIO_MODE_INPUT);
     gpio_set_direction(homeSensor, GPIO_MODE_INPUT);
+    
+    xTaskCreate(&servo_motor_drive_config, "servo_motor_drive_config", 4096, &servo_motor_ctrl_ctx, 10, NULL);
+    xTaskCreate(&stepper_motor_drive_config, "stepper_motor_drive_config", 4096, &stepper_motor_ctrl_ctx, 10, NULL);
 
-    motor_drive_config(&servo_motor_ctrl_ctx, 22, 23, 33, 32, 0, homeSensor);
-
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    setpoint = 100;
-    set_servo_motor_position(&servo_motor_ctrl_ctx, setpoint);
+    while(!servo_motor_ctrl_ctx.isReady&&!stepper_motor_ctrl_ctx.isReady){
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
 
     while (true)
     {
@@ -117,9 +135,17 @@ void app_main(void)
         {
             send_msg(get_servo_motor_position(&servo_motor_ctrl_ctx), get_servo_motor_error(&servo_motor_ctrl_ctx), get_servo_motor_control_output(&servo_motor_ctrl_ctx), get_servo_motor_speed(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "Position %.2f mm", get_servo_motor_position(&servo_motor_ctrl_ctx));
-            ESP_LOGI(TAG, "Velocidade %.2f RPM", get_servo_motor_speed(&servo_motor_ctrl_ctx));
+            ESP_LOGI(TAG, "Velocidade %.2f mm/s", get_servo_motor_speed(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "ERROR %f mm", get_servo_motor_error(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_servo_motor_control_output(&servo_motor_ctrl_ctx));
+        }
+        else if (isConnected)
+        {
+            send_msg(get_stepper_motor_position(&stepper_motor_ctrl_ctx), get_stepper_motor_error(&stepper_motor_ctrl_ctx), get_stepper_motor_control_output(&stepper_motor_ctrl_ctx), get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
+            ESP_LOGI(TAG, "Position %.2f mm", get_stepper_motor_position(&stepper_motor_ctrl_ctx));
+            ESP_LOGI(TAG, "Velocidade %.2f mm/s", get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
+            ESP_LOGI(TAG, "ERROR %f mm", get_stepper_motor_error(&stepper_motor_ctrl_ctx));
+            ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_stepper_motor_control_output(&stepper_motor_ctrl_ctx));
         }
         vTaskDelay(pdMS_TO_TICKS(250));
     }

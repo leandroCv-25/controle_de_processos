@@ -63,11 +63,13 @@ static void pid_loop_cb(void *args)
     }
 }
 
-void servo_motor_pid_update(servo_motor_control_context_t *motor_ctrl_ctx, float kp, float ki, float kd)
+void servo_motor_pid_update(servo_motor_control_context_t *motor_ctrl_ctx, float kp, float ki, float kd,float vmax)
 {
     motor_ctrl_ctx->controlData.kp = kp;
     motor_ctrl_ctx->controlData.ki = ki;
     motor_ctrl_ctx->controlData.kd = kd;
+
+    motor_ctrl_ctx->vmax = vmax;
 
     pid_ctrl_block_handle_t pid_ctrl = motor_ctrl_ctx->pid_ctrl;
 
@@ -78,7 +80,7 @@ void servo_motor_pid_update(servo_motor_control_context_t *motor_ctrl_ctx, float
         .ki = ki,
         .kd = kd,
         .cal_type = PID_CAL_TYPE_POSITIONAL,
-        .max_output = BDC_MCPWM_DUTY_TICK_MAX - 1,
+        .max_output = ((int)vmax/100)*(BDC_MCPWM_DUTY_TICK_MAX - 1),
         .min_output = 0,
         .max_integral = 1000,
         .min_integral = -1000,
@@ -100,7 +102,7 @@ float get_servo_motor_position(servo_motor_control_context_t *motor_ctrl_ctx)
 
 float get_servo_motor_speed(servo_motor_control_context_t *motor_ctrl_ctx)
 {
-    return (motor_ctrl_ctx->delta_pulses) * 60000 / ((motor_ctrl_ctx->pulses_per_rotation) * BDC_PID_LOOP_PERIOD_MS);
+    return (motor_ctrl_ctx->delta_pulses) * 1000 * M_PI * (motor_ctrl_ctx->size_gear)/ ((motor_ctrl_ctx->pulses_per_rotation) * BDC_PID_LOOP_PERIOD_MS);
 }
 
 float get_servo_motor_error(servo_motor_control_context_t *motor_ctrl_ctx)
@@ -113,20 +115,22 @@ float get_servo_motor_control_output(servo_motor_control_context_t *motor_ctrl_c
     return 100 * (motor_ctrl_ctx->controlData.output_control) / BDC_MCPWM_DUTY_TICK_MAX;
 }
 
-void motor_drive_config(servo_motor_control_context_t *motor_ctrl_ctx, int bdc_mcpwm_gpio_a, int bdc_mcpwm_gpio_b, int bdc_encoder_gpio_a, int bdc_encoder_gpio_b, int group_id, int home_sensor)
+void servo_motor_drive_config(void *pvParameters)
 {
 
-    // Fazer um HOME depois
+    servo_motor_control_context_t *motor_ctrl_ctx = (servo_motor_control_context_t*)pvParameters;
+
     motor_ctrl_ctx->expect_position = 0;
+    motor_ctrl_ctx->isReady = 0;
 
     ESP_LOGI(TAG, "Criando o DC motor");
     bdc_motor_config_t motor_config = {
         .pwm_freq_hz = BDC_MCPWM_FREQ_HZ,
-        .pwma_gpio_num = bdc_mcpwm_gpio_a, // Setando as portas da ponte H
-        .pwmb_gpio_num = bdc_mcpwm_gpio_b,
+        .pwma_gpio_num = motor_ctrl_ctx->bdc_mcpwm_gpio_a, // Setando as portas da ponte H
+        .pwmb_gpio_num = motor_ctrl_ctx->bdc_mcpwm_gpio_b,
     };
     bdc_motor_mcpwm_config_t mcpwm_config = {
-        .group_id = group_id,                           // Setando o timer do MCPWM
+        .group_id = motor_ctrl_ctx->group_id_timer,                           // Setando o timer do MCPWM
         .resolution_hz = BDC_MCPWM_TIMER_RESOLUTION_HZ, // Colocando a resolução do Timer do motor
     };
 
@@ -144,10 +148,10 @@ void motor_drive_config(servo_motor_control_context_t *motor_ctrl_ctx, int bdc_m
     ESP_ERROR_CHECK(bdc_motor_forward(motor));
     bdc_motor_set_speed(motor, 65 * BDC_MCPWM_DUTY_TICK_MAX / 100);
     vTaskDelay(pdMS_TO_TICKS(500));
-    while (gpio_get_level(home_sensor))
+    while (gpio_get_level(motor_ctrl_ctx->home_sensor))
     {
         ESP_ERROR_CHECK(bdc_motor_reverse(motor));
-        bdc_motor_set_speed(motor, 75 * BDC_MCPWM_DUTY_TICK_MAX / 100);
+        bdc_motor_set_speed(motor, 65 * BDC_MCPWM_DUTY_TICK_MAX / 100);
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 
@@ -171,16 +175,16 @@ void motor_drive_config(servo_motor_control_context_t *motor_ctrl_ctx, int bdc_m
 
     // Criando o canal a (Variável que vai armazenar as portas)
     pcnt_chan_config_t chan_a_config = {
-        .edge_gpio_num = bdc_encoder_gpio_a,
-        .level_gpio_num = bdc_encoder_gpio_b,
+        .edge_gpio_num = motor_ctrl_ctx->bdc_encoder_gpio_a,
+        .level_gpio_num = motor_ctrl_ctx->bdc_encoder_gpio_b,
     };
     pcnt_channel_handle_t pcnt_chan_a = NULL;
     ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit, &chan_a_config, &pcnt_chan_a));
 
     // Criando o canal b (Variável que vai armazenar as portas)
     pcnt_chan_config_t chan_b_config = {
-        .edge_gpio_num = bdc_encoder_gpio_b,
-        .level_gpio_num = bdc_encoder_gpio_a,
+        .edge_gpio_num = motor_ctrl_ctx->bdc_encoder_gpio_b,
+        .level_gpio_num = motor_ctrl_ctx->bdc_encoder_gpio_a,
     };
     pcnt_channel_handle_t pcnt_chan_b = NULL;
     ESP_ERROR_CHECK(pcnt_new_channel(pcnt_unit, &chan_b_config, &pcnt_chan_b));
@@ -240,4 +244,9 @@ void motor_drive_config(servo_motor_control_context_t *motor_ctrl_ctx, int bdc_m
 
     ESP_LOGI(TAG, "Start! o controle vai começar a calcular agora");
     ESP_ERROR_CHECK(esp_timer_start_periodic(pid_loop_timer, BDC_PID_LOOP_PERIOD_MS * 1000));
+
+    motor_ctrl_ctx->isReady = 1;
+
+    // Fim da task
+    vTaskDelete(NULL);
 }

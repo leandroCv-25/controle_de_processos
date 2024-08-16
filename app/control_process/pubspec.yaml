@@ -39,6 +39,7 @@ dependencies:
   brasil_fields: ^1.15.0
   cupertino_icons: ^1.0.8
   esp_smartconfig: ^2.0.4
+  graphic: ^1.0.1
   network_info_plus: ^6.0.0 
   permission_handler: ^11.3.1
   provider: ^6.1.2
