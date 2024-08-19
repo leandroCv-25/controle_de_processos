@@ -1,3 +1,4 @@
+import 'package:control_process/widgets/charts_widget.dart';
 import 'package:control_process/widgets/settings_control_position_widget.dart';
 import 'package:control_process/widgets/state_position_widget.dart';
 import 'package:flutter/material.dart';
@@ -92,6 +93,10 @@ class DeviceControlScreen extends StatelessWidget {
                               ),
                               StatePositionWidget(
                                 states: deviceController.states,
+                              ),
+                              ChartsWidget(
+                                data: deviceController.errorToMap(),
+                                height: 500,
                               ),
                             ],
                           ),

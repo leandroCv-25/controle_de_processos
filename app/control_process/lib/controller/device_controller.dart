@@ -119,6 +119,16 @@ class DeviceController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Map<int, double> errorToMap() {
+    final Map<int, double> map = {};
+    int i = 0;
+    for (var state in states) {
+      map[i] = state.error;
+      i++;
+    }
+    return map;
+  }
+
   sendMensage() {
     _mqttService?.published("/$deviceId/controller", _device.toJson());
   }
