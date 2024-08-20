@@ -142,7 +142,7 @@ void app_main(void)
             ESP_LOGI(TAG, "Velocidade %.2f mm/s", get_servo_motor_speed(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "ERROR %f mm", get_servo_motor_error(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_servo_motor_control_output(&servo_motor_ctrl_ctx));
-            if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_servo_motor_error(&servo_motor_ctrl_ctx))
+            if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_servo_motor_error(&servo_motor_ctrl_ctx)||period==0)
             {
                 send_msg(get_servo_motor_position(&servo_motor_ctrl_ctx), get_servo_motor_error(&servo_motor_ctrl_ctx), get_servo_motor_control_output(&servo_motor_ctrl_ctx), get_servo_motor_speed(&servo_motor_ctrl_ctx));
                 lastPosition = get_servo_motor_position(&servo_motor_ctrl_ctx);
@@ -156,7 +156,7 @@ void app_main(void)
             ESP_LOGI(TAG, "ERROR %f mm", get_stepper_motor_error(&stepper_motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_stepper_motor_control_output(&stepper_motor_ctrl_ctx));
 
-             if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_stepper_motor_error(&stepper_motor_ctrl_ctx))
+             if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_stepper_motor_error(&stepper_motor_ctrl_ctx)||period==0)
             {
                  send_msg(get_stepper_motor_position(&stepper_motor_ctrl_ctx), get_stepper_motor_error(&stepper_motor_ctrl_ctx), get_stepper_motor_control_output(&stepper_motor_ctrl_ctx), get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
                 lastPosition = get_stepper_motor_position(&stepper_motor_ctrl_ctx);

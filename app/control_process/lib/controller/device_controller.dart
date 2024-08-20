@@ -35,7 +35,9 @@ class DeviceController extends ChangeNotifier {
             error: statesDecoded!['error'],
             output: statesDecoded['output'],
             position: statesDecoded['position'],
-            speed: statesDecoded['speed'],
+            speed: statesDecoded['output'] >= 0
+                ? statesDecoded['speed']
+                : -statesDecoded['speed'],
             time: statesDecoded['time'],
           ),
         );

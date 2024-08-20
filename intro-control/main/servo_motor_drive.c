@@ -53,7 +53,7 @@ static void pid_loop_cb(void *args)
         ESP_ERROR_CHECK(bdc_motor_reverse(motor));
         // set the new speed
         pid_compute(pid_ctrl, error, &new_speed);
-        ctx->controlData.output_control = new_speed;
+        ctx->controlData.output_control = -new_speed;
         bdc_motor_set_speed(motor, (uint32_t)new_speed);
     }
     else
