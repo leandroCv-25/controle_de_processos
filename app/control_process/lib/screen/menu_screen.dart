@@ -16,7 +16,6 @@ class MenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Olá!"),
         actions: [
           IconButton(
             onPressed: () async {
@@ -74,7 +73,14 @@ class MenuScreen extends StatelessWidget {
             ),
             Consumer<DevicesProvider>(builder: (context, devices, _) {
               if (devices.loading) {
-                return const CircularProgressIndicator();
+                return const Positioned(
+                  bottom: 10,
+                  child: SizedBox(
+                    height: 128,
+                    width: 128,
+                    child: CircularProgressIndicator(),
+                  ),
+                );
               }
               return GridView.builder(
                 padding: EdgeInsets.symmetric(

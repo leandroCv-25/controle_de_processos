@@ -19,7 +19,7 @@ class Device {
     this.kp = 0.4,
     this.ki = 0.2,
     this.kd = 0.1,
-    this.setPoint = 100,
+    this.setPoint = 0,
     this.vmax = 100,
     this.isClosedLoop = 1,
   }) : _id = id;

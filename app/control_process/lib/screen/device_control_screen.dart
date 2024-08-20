@@ -94,9 +94,28 @@ class DeviceControlScreen extends StatelessWidget {
                               StatePositionWidget(
                                 states: deviceController.states,
                               ),
+                              DefaultTabController(
+                                length:
+                                    VisibleDataStateController.values.length,
+                                child: TabBar(
+                                  tabs: VisibleDataStateController.values
+                                      .map(
+                                        (element) => Tab(text: element.name),
+                                      )
+                                      .toList(),
+                                  onTap: (value) => deviceController
+                                          .visibleDataStateController =
+                                      VisibleDataStateController.values[value],
+                                ),
+                              ),
                               ChartsWidget(
-                                data: deviceController.errorToMap(),
+                                data: deviceController.dataToMap(),
                                 height: 500,
+                                maxValue: deviceController
+                                            .visibleDataStateController ==
+                                        VisibleDataStateController.output
+                                    ? 100
+                                    : 200,
                               ),
                             ],
                           ),

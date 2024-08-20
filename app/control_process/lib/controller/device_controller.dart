@@ -6,9 +6,14 @@ import 'package:flutter/foundation.dart';
 import '../model/device.dart';
 import '../services/mqtt_service.dart';
 
+enum VisibleDataStateController { error, position, output, speed }
+
 class DeviceController extends ChangeNotifier {
   final Device _device;
   MqttService? _mqttService;
+
+  VisibleDataStateController _visibleDataStateController =
+      VisibleDataStateController.error;
 
   DeviceController({required device}) : _device = device;
 
@@ -31,6 +36,7 @@ class DeviceController extends ChangeNotifier {
             output: statesDecoded['output'],
             position: statesDecoded['position'],
             speed: statesDecoded['speed'],
+            time: statesDecoded['time'],
           ),
         );
         _mqttService!.clearData(data);
@@ -116,20 +122,42 @@ class DeviceController extends ChangeNotifier {
   List<DeviceState> get states => _device.states;
   void _setStates(DeviceState state) {
     _device.states.add(state);
+    _device.states.sort(
+      (a, b) => a.time.compareTo(b.time),
+    );
     notifyListeners();
   }
 
-  Map<int, double> errorToMap() {
+  VisibleDataStateController get visibleDataStateController =>
+      _visibleDataStateController;
+
+  set visibleDataStateController(VisibleDataStateController data) {
+    _visibleDataStateController = data;
+    notifyListeners();
+  }
+
+  Map<int, double> dataToMap() {
     final Map<int, double> map = {};
-    int i = 0;
+
     for (var state in states) {
-      map[i] = state.error;
-      i++;
+      if (visibleDataStateController == VisibleDataStateController.error) {
+        map[state.time] = state.error;
+      } else if (visibleDataStateController ==
+          VisibleDataStateController.position) {
+        map[state.time] = state.position;
+      } else if (visibleDataStateController ==
+          VisibleDataStateController.output) {
+        map[state.time] = state.output;
+      } else if (visibleDataStateController ==
+          VisibleDataStateController.speed) {
+        map[state.time] = state.speed;
+      }
     }
     return map;
   }
 
   sendMensage() {
+    states.clear();
     _mqttService?.published("/$deviceId/controller", _device.toJson());
   }
 }

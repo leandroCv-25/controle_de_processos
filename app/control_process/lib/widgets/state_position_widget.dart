@@ -52,6 +52,10 @@ class StatePositionWidget extends StatelessWidget {
                       text: (states.last.position).toStringAsFixed(2),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    TextSpan(
+                      text: " mm",
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
                   ],
                 ),
               ),
@@ -68,6 +72,10 @@ class StatePositionWidget extends StatelessWidget {
                     TextSpan(
                       text: (states.last.error).toStringAsFixed(2),
                       style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    TextSpan(
+                      text: " mm",
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ],
                 ),
@@ -86,6 +94,10 @@ class StatePositionWidget extends StatelessWidget {
                       text: (states.last.output).toStringAsFixed(2),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    TextSpan(
+                      text: " %",
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
                   ],
                 ),
               ),
@@ -102,6 +114,10 @@ class StatePositionWidget extends StatelessWidget {
                     TextSpan(
                       text: (states.last.speed).toStringAsFixed(2),
                       style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    TextSpan(
+                      text: " mm/s",
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ],
                 ),

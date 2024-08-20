@@ -29,6 +29,9 @@ float setpoint = 0;
 float vmax = 100.00;
 int isClosedLoop = 1;
 bool isConnected = false;
+float lastPosition = 500;
+float lastError = 100;
+uint32_t period = 0;
 
 esp_mqtt_client_handle_t client;
 
@@ -53,12 +56,13 @@ static void receved_msg(char *str_data)
     {
         set_stepper_motor_position(&stepper_motor_ctrl_ctx, setpoint, vmax);
     }
+    period = 0;
 }
 
 void send_msg(float position, float error, float output, float speed)
 {
     char msg[200];
-    sprintf(msg, "{\"position\":%f,\"error\":%f,\"output\":%f,\"speed\":%f}", position, error, output, speed);
+    sprintf(msg, "{\"position\":%f,\"error\":%f,\"output\":%f,\"speed\":%f,\"time\":%lu}", position, error, output, speed,period);
     mqtt_app_send_msg(client, msg);
 }
 
@@ -121,11 +125,12 @@ void app_main(void)
     esp_rom_gpio_pad_select_gpio(homeSensor);
     gpio_set_direction(homeSensor, GPIO_MODE_INPUT);
     gpio_set_direction(homeSensor, GPIO_MODE_INPUT);
-    
+
     xTaskCreate(&servo_motor_drive_config, "servo_motor_drive_config", 4096, &servo_motor_ctrl_ctx, 10, NULL);
     xTaskCreate(&stepper_motor_drive_config, "stepper_motor_drive_config", 4096, &stepper_motor_ctrl_ctx, 10, NULL);
 
-    while(!servo_motor_ctrl_ctx.isReady&&!stepper_motor_ctrl_ctx.isReady){
+    while (!servo_motor_ctrl_ctx.isReady && !stepper_motor_ctrl_ctx.isReady)
+    {
         vTaskDelay(pdMS_TO_TICKS(250));
     }
 
@@ -133,20 +138,33 @@ void app_main(void)
     {
         if (isClosedLoop && isConnected)
         {
-            send_msg(get_servo_motor_position(&servo_motor_ctrl_ctx), get_servo_motor_error(&servo_motor_ctrl_ctx), get_servo_motor_control_output(&servo_motor_ctrl_ctx), get_servo_motor_speed(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "Position %.2f mm", get_servo_motor_position(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "Velocidade %.2f mm/s", get_servo_motor_speed(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "ERROR %f mm", get_servo_motor_error(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_servo_motor_control_output(&servo_motor_ctrl_ctx));
+            if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_servo_motor_error(&servo_motor_ctrl_ctx))
+            {
+                send_msg(get_servo_motor_position(&servo_motor_ctrl_ctx), get_servo_motor_error(&servo_motor_ctrl_ctx), get_servo_motor_control_output(&servo_motor_ctrl_ctx), get_servo_motor_speed(&servo_motor_ctrl_ctx));
+                lastPosition = get_servo_motor_position(&servo_motor_ctrl_ctx);
+                lastError = get_servo_motor_error(&servo_motor_ctrl_ctx);
+            }
         }
         else if (isConnected)
         {
-            send_msg(get_stepper_motor_position(&stepper_motor_ctrl_ctx), get_stepper_motor_error(&stepper_motor_ctrl_ctx), get_stepper_motor_control_output(&stepper_motor_ctrl_ctx), get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
             ESP_LOGI(TAG, "Position %.2f mm", get_stepper_motor_position(&stepper_motor_ctrl_ctx));
             ESP_LOGI(TAG, "Velocidade %.2f mm/s", get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
             ESP_LOGI(TAG, "ERROR %f mm", get_stepper_motor_error(&stepper_motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_stepper_motor_control_output(&stepper_motor_ctrl_ctx));
+
+             if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_stepper_motor_error(&stepper_motor_ctrl_ctx))
+            {
+                 send_msg(get_stepper_motor_position(&stepper_motor_ctrl_ctx), get_stepper_motor_error(&stepper_motor_ctrl_ctx), get_stepper_motor_control_output(&stepper_motor_ctrl_ctx), get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
+                lastPosition = get_stepper_motor_position(&stepper_motor_ctrl_ctx);
+                lastError = get_stepper_motor_error(&stepper_motor_ctrl_ctx);
+            }
+           
         }
+        period++;
         vTaskDelay(pdMS_TO_TICKS(250));
     }
 }
