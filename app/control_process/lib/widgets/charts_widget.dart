@@ -1,94 +1,139 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-class ChartsWidget extends StatefulWidget {
-  const ChartsWidget(
-      {super.key,
-      required this.data,
-      required this.height,
-      required this.maxValue});
+class ChartsWidget extends StatelessWidget {
+  ChartsWidget({
+    super.key,
+    required this.data,
+    required this.height,
+    required this.maxValue,
+    required this.minValue,
+    required this.maxTime,
+  });
 
   final Map<int, double> data;
   final double height;
+  final List<FlSpot> spots = [];
   final double maxValue;
-
-  @override
-  State<ChartsWidget> createState() => _ChartsWidgetState();
-}
-
-class _ChartsWidgetState extends State<ChartsWidget> {
-  bool isThereNegative = false;
-  double pasY = 0;
-  double pasX = 0;
-
-  void isNegative() {
-    int last = 0;
-    widget.data.forEach((index, value) {
-      if (value < 0) isThereNegative = true;
-      last = index;
-    });
-    pasX = (MediaQuery.of(context).size.width - 100) / (last);
-    setState(() {
-      if (isThereNegative) {
-        pasY = widget.height / (2 * widget.maxValue);
-      } else {
-        pasY = widget.height / widget.maxValue;
-      }
-    });
-  }
-
-  Path drawPath() {
-    isNegative();
-    final path = Path();
-    if (widget.data[0] != null) {
-      if (isThereNegative) {
-        path.moveTo(0, widget.height / 2 - pasY * widget.data[0]!);
-      } else {
-        path.moveTo(0, widget.height - pasY * widget.data[0]!);
-      }
-    } else {
-      path.moveTo(0, widget.height);
-    }
-
-    widget.data.forEach((index, value) {
-      if (index != 0) {
-        if (isThereNegative) {
-          path.lineTo(
-              index * pasX, widget.height / 2 - pasY * widget.data[index]!);
-        } else {
-          path.lineTo(index * pasX, widget.height - pasY * widget.data[index]!);
-        }
-      }
-    });
-    return path;
-  }
+  final double minValue;
+  final int maxTime;
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(
-        MediaQuery.of(context).size.width - 100,
-        widget.height,
+    data.forEach(
+      (key, value) => spots.add(FlSpot(key.toDouble() * 0.01, value)),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: 12,
+        bottom: 12,
+        right: 20,
+        top: 20,
       ),
-      painter: PathPainter(
-        path: drawPath(),
+      child: AspectRatio(
+        aspectRatio: MediaQuery.of(context).size.width / height,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    maxContentWidth: 100,
+                    getTooltipColor: (touchedSpot) => Colors.white,
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((LineBarSpot touchedSpot) {
+                        final textStyle =
+                            Theme.of(context).textTheme.labelLarge!;
+                        return LineTooltipItem(
+                          '${touchedSpot.x.toStringAsFixed(3)}, ${touchedSpot.y.toStringAsFixed(3)}',
+                          textStyle,
+                        );
+                      }).toList();
+                    },
+                  ),
+                  handleBuiltInTouches: true,
+                  getTouchLineStart: (data, index) => 0,
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    color: Theme.of(context).sliderTheme.activeTrackColor,
+                    spots: spots,
+                    isCurved: false,
+                    isStrokeCapRound: false,
+                    barWidth: 3,
+                    belowBarData: BarAreaData(
+                      show: false,
+                    ),
+                    dotData: const FlDotData(show: true),
+                  ),
+                ],
+                minY: minValue,
+                maxY: maxValue,
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        // ignore: unused_local_variable
+                        final chartWidth = constraints.maxWidth;
+                        final style = Theme.of(context).textTheme.bodyLarge;
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          space: 16,
+                          child: Text(meta.formattedValue, style: style),
+                        );
+                      },
+                      reservedSize: 100,
+                    ),
+                    drawBelowEverything: true,
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        // final chartWidth = constraints.maxWidth;
+                        // if (value % 1 != 0) {
+                        //   return Container();
+                        // }
+                        final style = Theme.of(context).textTheme.bodyLarge;
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          space: 16,
+                          child: Text(meta.formattedValue, style: style),
+                        );
+                      },
+                      reservedSize: 48,
+                      interval: 1,
+                    ),
+                    drawBelowEverything: true,
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawHorizontalLine: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 0.5,
+                  checkToShowHorizontalLine: (value) {
+                    return value.toInt() == 0;
+                  },
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: Theme.of(context).sliderTheme.activeTrackColor,
+                    dashArray: [1, 1],
+                    strokeWidth: 0.8,
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
-}
-
-class PathPainter extends CustomPainter {
-  Path path;
-  PathPainter({required this.path});
-  @override
-  void paint(Canvas canvas, Size size) {
-    // paint the line
-    final paint = Paint()
-      ..color = Colors.deepPurple
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0;
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

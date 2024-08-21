@@ -31,6 +31,8 @@ int isClosedLoop = 1;
 bool isConnected = false;
 float lastPosition = 500;
 float lastError = 100;
+float lastSpeed = 500;
+float lastOutput = 500;
 uint32_t period = 0;
 
 esp_mqtt_client_handle_t client;
@@ -62,7 +64,7 @@ static void receved_msg(char *str_data)
 void send_msg(float position, float error, float output, float speed)
 {
     char msg[200];
-    sprintf(msg, "{\"position\":%f,\"error\":%f,\"output\":%f,\"speed\":%f,\"time\":%lu}", position, error, output, speed,period);
+    sprintf(msg, "{\"position\":%f,\"error\":%f,\"output\":%f,\"speed\":%f,\"time\":%lu}", position, error, output, speed, period);
     mqtt_app_send_msg(client, msg);
 }
 
@@ -142,11 +144,25 @@ void app_main(void)
             ESP_LOGI(TAG, "Velocidade %.2f mm/s", get_servo_motor_speed(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "ERROR %f mm", get_servo_motor_error(&servo_motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_servo_motor_control_output(&servo_motor_ctrl_ctx));
-            if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_servo_motor_error(&servo_motor_ctrl_ctx)||period==0)
+            if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx) || lastError != get_servo_motor_error(&servo_motor_ctrl_ctx) || lastOutput != get_servo_motor_control_output(&servo_motor_ctrl_ctx) || lastSpeed != get_servo_motor_speed(&servo_motor_ctrl_ctx) || period == 0)
             {
                 send_msg(get_servo_motor_position(&servo_motor_ctrl_ctx), get_servo_motor_error(&servo_motor_ctrl_ctx), get_servo_motor_control_output(&servo_motor_ctrl_ctx), get_servo_motor_speed(&servo_motor_ctrl_ctx));
-                lastPosition = get_servo_motor_position(&servo_motor_ctrl_ctx);
-                lastError = get_servo_motor_error(&servo_motor_ctrl_ctx);
+                if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx))
+                {
+                    lastPosition = get_servo_motor_position(&servo_motor_ctrl_ctx);
+                }
+                else if (lastError != get_servo_motor_error(&servo_motor_ctrl_ctx))
+                {
+                    lastError = get_servo_motor_error(&servo_motor_ctrl_ctx);
+                }
+                else if (lastOutput != get_servo_motor_control_output(&servo_motor_ctrl_ctx))
+                {
+                    lastOutput = get_servo_motor_control_output(&servo_motor_ctrl_ctx);
+                }
+                else
+                {
+                    lastSpeed = get_servo_motor_speed(&servo_motor_ctrl_ctx);
+                }
             }
         }
         else if (isConnected)
@@ -156,15 +172,28 @@ void app_main(void)
             ESP_LOGI(TAG, "ERROR %f mm", get_stepper_motor_error(&stepper_motor_ctrl_ctx));
             ESP_LOGI(TAG, "OUTPUT %.3f %%\n\n\n", get_stepper_motor_control_output(&stepper_motor_ctrl_ctx));
 
-             if (lastPosition != get_servo_motor_position(&servo_motor_ctrl_ctx)||lastError!=get_stepper_motor_error(&stepper_motor_ctrl_ctx)||period==0)
+            if (lastPosition != get_stepper_motor_position(&stepper_motor_ctrl_ctx) || lastError != get_stepper_motor_error(&stepper_motor_ctrl_ctx) || lastSpeed != get_stepper_motor_speed(&stepper_motor_ctrl_ctx) || lastOutput != get_stepper_motor_control_output(&stepper_motor_ctrl_ctx) || period == 0)
             {
-                 send_msg(get_stepper_motor_position(&stepper_motor_ctrl_ctx), get_stepper_motor_error(&stepper_motor_ctrl_ctx), get_stepper_motor_control_output(&stepper_motor_ctrl_ctx), get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
-                lastPosition = get_stepper_motor_position(&stepper_motor_ctrl_ctx);
-                lastError = get_stepper_motor_error(&stepper_motor_ctrl_ctx);
+                send_msg(get_stepper_motor_position(&stepper_motor_ctrl_ctx), get_stepper_motor_error(&stepper_motor_ctrl_ctx), get_stepper_motor_control_output(&stepper_motor_ctrl_ctx), get_stepper_motor_speed(&stepper_motor_ctrl_ctx));
+                if (lastPosition != get_stepper_motor_position(&stepper_motor_ctrl_ctx))
+                {
+                    lastPosition = get_stepper_motor_position(&stepper_motor_ctrl_ctx);
+                }
+                else if (lastError != get_stepper_motor_error(&stepper_motor_ctrl_ctx))
+                {
+                    lastError = get_stepper_motor_error(&stepper_motor_ctrl_ctx);
+                }
+                else if (lastOutput != get_stepper_motor_control_output(&stepper_motor_ctrl_ctx))
+                {
+                    lastOutput = get_stepper_motor_control_output(&stepper_motor_ctrl_ctx);
+                }
+                else
+                {
+                    lastSpeed = get_stepper_motor_speed(&stepper_motor_ctrl_ctx);
+                }
             }
-           
         }
         period++;
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

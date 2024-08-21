@@ -89,7 +89,10 @@ class DeviceControlScreen extends StatelessWidget {
                                     deviceController.vmax = value,
                                 onChangedIsClosedLoop: (value) =>
                                     deviceController.isClosedLoop = value,
-                                sendMensage: deviceController.sendMensage,
+                                sendMensage: Provider.of<DeviceController>(
+                                        context,
+                                        listen: false)
+                                    .sendMensage,
                               ),
                               StatePositionWidget(
                                 states: deviceController.states,
@@ -111,11 +114,9 @@ class DeviceControlScreen extends StatelessWidget {
                               ChartsWidget(
                                 data: deviceController.dataToMap(),
                                 height: 500,
-                                maxValue: deviceController
-                                            .visibleDataStateController ==
-                                        VisibleDataStateController.output
-                                    ? 100
-                                    : 200,
+                                maxValue: deviceController.maxValue,
+                                minValue: deviceController.minValue,
+                                maxTime: deviceController.lastPeriod,
                               ),
                             ],
                           ),

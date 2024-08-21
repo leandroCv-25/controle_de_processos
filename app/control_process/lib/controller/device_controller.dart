@@ -138,22 +138,41 @@ class DeviceController extends ChangeNotifier {
     notifyListeners();
   }
 
+  double maxValue = 200;
+  double minValue = 200;
+  int lastPeriod = 0;
+
   Map<int, double> dataToMap() {
     final Map<int, double> map = {};
+    double maxY = -200;
+    double minY = 200;
 
     for (var state in states) {
       if (visibleDataStateController == VisibleDataStateController.error) {
         map[state.time] = state.error;
+        if (maxY < state.error) maxY = state.error;
+        if (minY > state.error) minY = state.error;
       } else if (visibleDataStateController ==
           VisibleDataStateController.position) {
         map[state.time] = state.position;
+        if (maxY < state.position) maxY = state.position;
+        if (minY > state.position) minY = state.position;
       } else if (visibleDataStateController ==
           VisibleDataStateController.output) {
         map[state.time] = state.output;
+        if (maxY < state.output) maxY = state.output;
+        if (minY > state.output) minY = state.output;
       } else if (visibleDataStateController ==
           VisibleDataStateController.speed) {
         map[state.time] = state.speed;
+        if (maxY < state.speed) maxY = state.speed;
+        if (minY > state.speed) minY = state.speed;
       }
+    }
+    if (states.isNotEmpty) {
+      maxValue = maxY;
+      minValue = minY;
+      lastPeriod = states.last.time;
     }
     return map;
   }
