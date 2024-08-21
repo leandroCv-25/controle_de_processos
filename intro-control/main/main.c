@@ -151,15 +151,15 @@ void app_main(void)
                 {
                     lastPosition = get_servo_motor_position(&servo_motor_ctrl_ctx);
                 }
-                else if (lastError != get_servo_motor_error(&servo_motor_ctrl_ctx))
+                 if (lastError != get_servo_motor_error(&servo_motor_ctrl_ctx))
                 {
                     lastError = get_servo_motor_error(&servo_motor_ctrl_ctx);
                 }
-                else if (lastOutput != get_servo_motor_control_output(&servo_motor_ctrl_ctx))
+                 if (lastOutput != get_servo_motor_control_output(&servo_motor_ctrl_ctx))
                 {
                     lastOutput = get_servo_motor_control_output(&servo_motor_ctrl_ctx);
                 }
-                else
+                if(lastSpeed != get_servo_motor_speed(&servo_motor_ctrl_ctx))
                 {
                     lastSpeed = get_servo_motor_speed(&servo_motor_ctrl_ctx);
                 }
@@ -179,15 +179,15 @@ void app_main(void)
                 {
                     lastPosition = get_stepper_motor_position(&stepper_motor_ctrl_ctx);
                 }
-                else if (lastError != get_stepper_motor_error(&stepper_motor_ctrl_ctx))
+                 if (lastError != get_stepper_motor_error(&stepper_motor_ctrl_ctx))
                 {
                     lastError = get_stepper_motor_error(&stepper_motor_ctrl_ctx);
                 }
-                else if (lastOutput != get_stepper_motor_control_output(&stepper_motor_ctrl_ctx))
+                 if (lastOutput != get_stepper_motor_control_output(&stepper_motor_ctrl_ctx))
                 {
                     lastOutput = get_stepper_motor_control_output(&stepper_motor_ctrl_ctx);
                 }
-                else
+                if (lastSpeed != get_stepper_motor_speed(&stepper_motor_ctrl_ctx))
                 {
                     lastSpeed = get_stepper_motor_speed(&stepper_motor_ctrl_ctx);
                 }
