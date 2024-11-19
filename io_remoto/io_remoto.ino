@@ -48,8 +48,10 @@ void setup() {
   setupFlowSensor(pinFlowSensor2, 2);
   setupFlowSensor(pinFlowSensor3, 3);
 
+  RS485Class rs = RS485Class(Serial, 1, 7, 7);
+
   // Inicializa o servidor Modbus RTU
-  if (!ModbusRTUServer.begin(SLAVE_ID, BAUDRATE, UART_CONFIG)) {
+  if (!ModbusRTUServer.begin(rs, SLAVE_ID, BAUDRATE, UART_CONFIG)) {
     Serial.println("Falha ao iniciar o Servidor Modbus RTU!");
     while (1) {
       digitalWrite(LED_BUILTIN, HIGH);

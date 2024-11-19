@@ -48,18 +48,15 @@ void setup() {
   pinMode(PinEcho, INPUT);  // configura pino ECHO como entrada
   pinMode(LED_BUILTIN, OUTPUT);
 
-  // Inicializa a porta serial
-  Serial.begin(115200);
 
-  balanca.begin(DOUT, CLK);  // inicializa a balança
-  Serial.println();          // salta uma linha
+  balanca.begin(DOUT, CLK);  // inicializa a balança         // salta uma linha
 
   balanca.set_scale();  // configura a escala da Balança
   zeraBalanca();
 
+  RS485Class rs = RS485Class(Serial, 1, 7, 7);
   // Inicializa o servidor Modbus RTU
-  if (!ModbusRTUServer.begin(SLAVE_ID, BAUDRATE, UART_CONFIG)) {
-    Serial.println("Falha ao iniciar o Servidor Modbus RTU!");
+  if (!ModbusRTUServer.begin(rs, SLAVE_ID, BAUDRATE, UART_CONFIG)) {
     while (1) {
       digitalWrite(LED_BUILTIN, HIGH);
       delay(500);
@@ -77,9 +74,7 @@ void setup() {
 }
 
 void zeraBalanca() {
-  Serial.println();  // salta uma linha
-  balanca.tare();    // zera a Balança
-  Serial.println("Balança Zerada ");
+  balanca.tare();  // zera a Balança
 }
 
 void loop() {
