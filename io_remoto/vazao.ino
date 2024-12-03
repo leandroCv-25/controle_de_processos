@@ -32,9 +32,6 @@ void flowSensorPulse() {
   pulse_sensor1 = 0;
   pulse_sensor2 = 0;
   pulse_sensor3 = 0;
-  interrupts();    //Habilita o interrupção no Arduino
-  delay(1000);     //Espera 1 segundo
-  noInterrupts();  //Desabilita o interrupção no Arduino
 }
 
 float pulseToFlow(int number) {

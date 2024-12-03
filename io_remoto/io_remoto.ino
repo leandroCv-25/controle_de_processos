@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include <max6675.h>
 #include <ArduinoRS485.h>
 #include <ArduinoModbus.h>
@@ -7,11 +9,11 @@
 #define BAUDRATE 115200         // 115200 bps
 #define UART_CONFIG SERIAL_8N1  // 8 data bits, sem paridade, 1 stop bits
 
-#define NUMBER_HOLDING_REGISTERS 5
-#define HOLDING_REGISTERS_ADDRESS 0x0001
+#define NUMBER_HOLDING_REGISTERS 6
+#define HOLDING_REGISTERS_ADDRESS 0x0000
 
 #define pinHeater 22  // Pino usado acionar um relê do heater
-#define COIL_ADDRESS 0x0001
+#define COIL_ADDRESS 0x0000
 
 // mapeamento dos pinos de entradas e saidas
 const int outputCoilMap[] = { pinHeater };  // pino referentes ao led buildin
@@ -29,10 +31,15 @@ const int outputCoilMap[] = { pinHeater };  // pino referentes ao led buildin
 #define GPIO_CS1 10  //Chip select termopar 1
 #define GPIO_CS2 11  //Chip select termopar 2
 
+#define ntc A0
+
 int pulse_sensor1;
 int pulse_sensor2;
 int pulse_sensor3;
 
+int k = 0;
+int j = 0;
+float mediaTemp = 0;
 
 float vazaoagua;  //Variável para armazenar o valor em L/min
 
@@ -48,7 +55,9 @@ void setup() {
   setupFlowSensor(pinFlowSensor2, 2);
   setupFlowSensor(pinFlowSensor3, 3);
 
-  RS485Class rs = RS485Class(Serial, 1, 7, 7);
+  Serial.begin(115200);
+
+  RS485Class rs = RS485Class(Serial3, 14, 7, 7);
 
   // Inicializa o servidor Modbus RTU
   if (!ModbusRTUServer.begin(rs, SLAVE_ID, BAUDRATE, UART_CONFIG)) {
@@ -61,30 +70,51 @@ void setup() {
     }
   }
 
-  digitalWrite(LED_BUILTIN, HIGH);
+  // digitalWrite(LED_BUILTIN, HIGH);
 
   // bobinas a partir do endereço COIL_ADDRESS
   ModbusRTUServer.configureCoils(COIL_ADDRESS, NUMBER_COILS);
   // associa holding registers (registradores)
   ModbusRTUServer.configureHoldingRegisters(HOLDING_REGISTERS_ADDRESS, NUMBER_HOLDING_REGISTERS);
+
+  interrupts();  //Habilita o interrupção no Arduino
+  flowSensorPulse();
 }
 
 void loop() {
   ModbusRTUServer.poll();
 
-  for (int i = 0; i < NUMBER_COILS; i++) {
-    // atualiza o pino digital conforme o estado da bobina no servidor
-    digitalWrite(outputCoilMap[i], ModbusRTUServer.coilRead(COIL_ADDRESS + i));
+  k++;
+  int bitSensor = analogRead(ntc);
+  float rSensor = (float)bitSensor * 1000 / (1023 - bitSensor);
+  float tK = 3500 / log(rSensor / (0.0792913630639834));
+  float temp = tK - 273;
+  mediaTemp += temp*10;
+
+  if (k == 100) {
+    ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS+1, mediaTemp);
+    mediaTemp = 0;
+    k = 0;
   }
 
-  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS, termopar1.readCelsius());
+  for (int i = 0; i < NUMBER_COILS; i++) {
+    // atualiza o pino digital conforme o estado da bobina no servidor
+    digitalWrite(outputCoilMap[i], !ModbusRTUServer.coilRead(COIL_ADDRESS + i));
+  }
+
+  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS, (uint16_t)(termopar1.readCelsius() * 1000));
 
 
-  flowSensorPulse();
+  j++;
+  if (j == 100) {
+    ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 3, pulseToFlow(1) * 1000);
+    ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 4, pulseToFlow(2) * 1000);
+    ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 5, pulseToFlow(3) * 1000);
+    flowSensorPulse();
+    j = 0;
+  }
 
-  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 2, pulseToFlow(1));
-  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 3, pulseToFlow(2));
-  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 4, pulseToFlow(3));
-
-  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 1, termopar2.readCelsius());
+  delay(5);
+  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS + 2, (uint16_t)(termopar2.readCelsius() * 1000));
+  delay(5);
 }

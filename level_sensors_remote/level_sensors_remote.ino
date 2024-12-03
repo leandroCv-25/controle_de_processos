@@ -3,7 +3,7 @@
 #include <ArduinoModbus.h>
 
 // Definicoes do escravo e da comunicacao serial
-#define SLAVE_ID 1              // endereco do escravo Modbus RTU
+#define SLAVE_ID 2              // endereco do escravo Modbus RTU
 #define BAUDRATE 115200         // 115200 bps
 #define UART_CONFIG SERIAL_8N1  // 8 data bits, sem paridade, 1 stop bits
 
@@ -93,9 +93,9 @@ void loop() {
 
   float dist = CalculaDistancia(TimeEcho);
 
-  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS_U_LEVEL, map(dist, uLevelMin, uLevelMax, 0, 100));
+  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS_U_LEVEL, map(dist, uLevelMin, uLevelMax, 0, 10000));
 
   balanca.set_scale(calibration_factor);  // ajusta fator de calibração
 
-  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS_B_LEVEL, map(balanca.get_units(), 0, bLevelMax, 0, 100));
+  ModbusRTUServer.holdingRegisterWrite(HOLDING_REGISTERS_ADDRESS_B_LEVEL, map(balanca.get_units(), 0, bLevelMax, 0, 10000));
 }
